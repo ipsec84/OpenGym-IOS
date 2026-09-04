@@ -24,3 +24,8 @@ frontend/bundle-size.json
 
 OpenGym-IOS-Project.zip
 
+
+*.ipa
+*.tar.gz
+*.zip
+
