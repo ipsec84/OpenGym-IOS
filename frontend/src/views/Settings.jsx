@@ -258,13 +258,26 @@ export default function Settings() {
         subtitle={t('to install openGym as a full-screen app.') + ' ' + (user ? t('Your data syncs with your profile — sign in anywhere to see it.') : t('Guest data stays on this device — export a backup now and then!'))} />
     </Section>}
 
+    <Section title={t('Información y Modificaciones')}>
+      <Row
+        icon="info"
+        iconTint="var(--acc)"
+        title="Versión y Cambios del Sistema"
+        subtitle={`openGym v${__APP_VERSION__} · Synology & iOS Build`}
+        accessory="chevron"
+        onClick={() => nav('/about')}
+      />
+    </Section>
+
     {/* The version, at the bottom of Settings — which is where the support template has been
         telling people to look for it, and where it was not. On the phone build there is no
         address bar and no about box, so without this there is no way to tell which build you
         are running, or whether an update actually installed. */}
     <div className="dim small" style={{ textAlign: 'center', marginTop: 4, lineHeight: 1.6 }}>
-      openGym v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}<br />
-      <a href="https://gitlab.com/DuarteSantos8/opengym" target="_blank" rel="noopener">source code</a> · exercise data: hasaneyldrm/exercises-dataset (MIT)<br />
+      <span onClick={() => nav('/about')} style={{ cursor: 'pointer', textDecoration: 'underline' }}>
+        openGym v{__APP_VERSION__} (Custom Build)
+      </span> · {t('free & open source (AGPL v3)')}<br />
+      <a href="https://github.com/ipsec84/OpenGym-IOS" target="_blank" rel="noopener">repositorio ipsec84</a> · exercise data: hasaneyldrm/exercises-dataset (MIT)<br />
       exercise images and animations © <a href="https://gymvisual.com/" target="_blank" rel="noopener">Gym visual</a>
     </div>
   </div>
