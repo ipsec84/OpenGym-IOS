@@ -235,10 +235,11 @@ function BwSheet({ required, onDone, close }) {
         {recent.map(b => <div key={b.d} className="row between" style={{ padding: '9px 2px', borderBottom: '1px solid var(--sep)' }}>
           <div>
             <span className="small muted">{fmtDate(b.d, true)}</span>
-            {(b.fat != null || b.muscle != null) && <div className="small dim" style={{ fontSize: 11 }}>
+            {(b.fat != null || b.muscle != null || b.water != null || b.visceral != null) && <div className="small dim" style={{ fontSize: 11 }}>
               {b.fat != null && <span>{fmtNum(b.fat)}% {t('fat')}</span>}
-              {b.fat != null && b.muscle != null && <span> · </span>}
-              {b.muscle != null && <span>{fmtNum(b.muscle)} {unit} {t('muscle')}</span>}
+              {b.muscle != null && <span> · {fmtNum(b.muscle)} {unit} {t('muscle')}</span>}
+              {b.water != null && <span> · {fmtNum(b.water)}% {t('water')}</span>}
+              {b.visceral != null && <span> · {b.visceral} {t('visceral')}</span>}
             </div>}
           </div>
           <span className="row" style={{ gap: 12 }}><b>{fmtNum(b.w)} {unit}</b>

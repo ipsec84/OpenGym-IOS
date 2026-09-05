@@ -1126,4 +1126,10 @@ export default {
   'Weight': 'Peso',
   'Latest biometrics': 'Última bioimpedancia',
   'BMR': 'TMB',
+  '+ Add bioimpedance data (FitProfile / % Fat)': '+ Datos de bioimpedancia (FitProfile / % Grasa)',
+  'Hide bioimpedance (FitProfile)': 'Ocultar bioimpedancia (FitProfile)',
+  '% Body fat': '% Grasa corporal',
+  'Muscle mass ({0})': 'Masa muscular ({0})',
+  '% Body water': '% Agua corporal',
+  'BMR / Basal metabolic rate (kcal)': 'TMB / Metabolismo basal (kcal)',
 }

@@ -6,8 +6,9 @@ import { fmtNum, fmtDate, todayISO, isoOf, weekKey, weekStartOf, weekDayOffset, 
 import { t, dateLocale } from '../lib/i18n.js'
 import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, startFlow, loadStarterPlan, bwDeltaColor } from '../sheets.jsx'
 import LineChart from '../components/LineChart.jsx'
+import MultiLineChart from '../components/MultiLineChart.jsx'
 import Icon from '../components/Icon.jsx'
-import { Button } from '../components/ui.jsx'
+import { Button, Segmented } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf } from '../lib/glyphs.js'
 
@@ -50,7 +51,36 @@ export default function Home() {
 
   const wThisWeek = S.workouts.filter(w => weekKey(w.d, ws) === weekKey(todayISO(), ws)).length
   const plannedPerWeek = Object.keys(S.week).filter(k => S.week[k]).length
-  const bwPoints = S.bodyweight.slice(-30).map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.w, d: b.d }))
+
+  const hasFat = S.bodyweight?.some(b => b.fat != null)
+  const hasMuscle = S.bodyweight?.some(b => b.muscle != null)
+  const hasWater = S.bodyweight?.some(b => b.water != null)
+  const hasVisceral = S.bodyweight?.some(b => b.visceral != null)
+  const hasBio = hasFat || hasMuscle || hasWater || hasVisceral
+
+  const [bwMetric, setBwMetric] = useState(hasBio ? 'all' : 'weight')
+
+  const bwPts = (S.bodyweight || []).slice(-30).map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.w, d: b.d }))
+  const fatPts = (S.bodyweight || []).filter(b => b.fat != null).slice(-30).map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.fat, d: b.d }))
+  const musclePts = (S.bodyweight || []).filter(b => b.muscle != null).slice(-30).map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.muscle, d: b.d }))
+  const waterPts = (S.bodyweight || []).filter(b => b.water != null).slice(-30).map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.water, d: b.d }))
+  const visceralPts = (S.bodyweight || []).filter(b => b.visceral != null).slice(-30).map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.visceral, d: b.d }))
+
+  const bwMetricOpts = []
+  if (hasBio) bwMetricOpts.push({ value: 'all', label: t('All lines') })
+  bwMetricOpts.push({ value: 'weight', label: t('Weight') })
+  if (hasFat) bwMetricOpts.push({ value: 'fat', label: t('% Fat') })
+  if (hasMuscle) bwMetricOpts.push({ value: 'muscle', label: t('Muscle') })
+  if (hasWater) bwMetricOpts.push({ value: 'water', label: t('% Water') })
+  if (hasVisceral) bwMetricOpts.push({ value: 'visceral', label: t('Visceral') })
+
+  const biometricSeries = [
+    { id: 'weight', name: t('Weight'), color: 'var(--acc)', unit: S.unit, points: bwPts },
+    hasMuscle && { id: 'muscle', name: t('Muscle'), color: '#3b82f6', unit: S.unit, points: musclePts },
+    hasWater && { id: 'water', name: t('% Water'), color: '#06b6d4', unit: '%', points: waterPts },
+    hasFat && { id: 'fat', name: t('% Fat'), color: '#eab308', unit: '%', points: fatPts },
+    hasVisceral && { id: 'visceral', name: t('Visceral'), color: '#f97316', unit: 'pts', points: visceralPts },
+  ].filter(Boolean)
 
   // today's session shown right under the week strip
   const onToday = () => { if (S.active) nav('/workout'); else if (routine) startFlow(routine.id); else dayOverrideSheet(todayISO()) }
@@ -148,8 +178,34 @@ export default function Home() {
             <Icon name="target" style={{ fontSize: 13 }} />
             <span>{t('Goal')} {fmtNum(S.targetW)} {S.unit} · {Math.abs(S.targetW - bw.w) < 0.05 ? t('reached!') : t(S.targetW > bw.w ? '{0} to gain' : '{0} to lose', fmtNum(Math.abs(S.targetW - bw.w)) + ' ' + S.unit)}</span>
           </div>
+        {hasBio && (
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 8, fontSize: 11 }}>
+            {bw.fat != null && <span style={{ padding: '2px 8px', borderRadius: 999, background: 'var(--surface-2)', border: '1px solid #eab308', color: '#eab308' }}><b>{fmtNum(bw.fat)}%</b> {t('fat')}</span>}
+            {bw.muscle != null && <span style={{ padding: '2px 8px', borderRadius: 999, background: 'var(--surface-2)', border: '1px solid #3b82f6', color: '#3b82f6' }}><b>{fmtNum(bw.muscle)} {S.unit}</b> {t('muscle')}</span>}
+            {bw.water != null && <span style={{ padding: '2px 8px', borderRadius: 999, background: 'var(--surface-2)', border: '1px solid #06b6d4', color: '#06b6d4' }}><b>{fmtNum(bw.water)}%</b> {t('water')}</span>}
+            {bw.visceral != null && <span style={{ padding: '2px 8px', borderRadius: 999, background: 'var(--surface-2)', border: '1px solid #f97316', color: '#f97316' }}><b>{bw.visceral}</b> {t('visceral')}</span>}
+          </div>
         )}
-        <div className="chart" style={{ marginTop: 8 }}><LineChart points={bwPoints} h={130} unit={S.unit} goal={S.targetW} /></div>
+        {bwMetricOpts.length > 1 && (
+          <div style={{ marginTop: 8 }}>
+            <Segmented className="seg-range" value={bwMetric} onChange={setBwMetric} options={bwMetricOpts} />
+          </div>
+        )}
+        <div className="chart" style={{ marginTop: 8 }}>
+          {bwMetric === 'all' ? (
+            <MultiLineChart series={biometricSeries} h={150} />
+          ) : bwMetric === 'fat' ? (
+            <LineChart points={fatPts} h={140} unit="%" color="#eab308" />
+          ) : bwMetric === 'muscle' ? (
+            <LineChart points={musclePts} h={140} unit={S.unit} color="#3b82f6" />
+          ) : bwMetric === 'water' ? (
+            <LineChart points={waterPts} h={140} unit="%" color="#06b6d4" />
+          ) : bwMetric === 'visceral' ? (
+            <LineChart points={visceralPts} h={140} unit="pts" color="#f97316" />
+          ) : (
+            <LineChart points={bwPts} h={140} unit={S.unit} goal={S.targetW} />
+          )}
+        </div>
       </> : <div className="muted small">{t("No entries yet — log your weight to start the curve. It's also asked before every workout.")}</div>}
     </div>
 
