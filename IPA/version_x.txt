@@ -20,17 +20,16 @@ ARCHIVOS DISPONIBLES EN ESTA CARPETA:
    - Nueva pantalla de inicio / Launch Screen integrada para iOS y iPadOS.
    - Favicons PWA actualizados.
 
-3. openGym_v3.ipa (17.22 MB) [RECOMENDADA]
-   - Versión actual con todas las mejoras de rendimiento y entrenamiento.
-   - Avisos sonoros (chimes de 880Hz) directos a cascos/AirPods al terminar descanso.
+3. AresGYM_latest.ipa / openGym_latest.ipa (17.22 MB) [RECOMENDADA]
+   - Nombre oficial en pantalla del iPhone: AresGYM
+   - Icono oficial: Casco espartano dorado de Ares Gym con fondo texturizado.
+   - Gráfica multilínea en la pantalla de INICIO (Peso, Músculo, % Agua, % Grasa, Visceral).
+   - Avisos sonoros (chimes) directos a cascos/AirPods al terminar descanso.
    - Selector rápido de RIR / RPE en la cabecera de la serie.
    - Botón de sobrecarga progresiva (+2.5 kg) en un toque.
-   - Cálculo de 1RM estimado dinámico en vivo con medallas doradas "🏆 PR!".
+   - Cálculo de 1RM dinámico en vivo con medallas doradas "🏆 PR!".
    - Gráfica de volumen muscular semanal con marcadores hipertróficos (MEV, MAV, MRV).
    - Integración completa de bioimpedancia FitProfile / Apple Health.
-   - Gráficas multilínea simultáneas (Peso, Músculo, % Agua, % Grasa, Visceral).
-   - Panel de deltas biométricos automáticos comparativos vs pesaje anterior.
-
-4. openGym_latest.ipa (17.22 MB)
-   - Copia directa de la versión más reciente (openGym_v3) para instalación directa.
+   - Resumen biométrico con cálculo automático de variaciones / deltas.
+   - Hoja de pesaje y opciones 100% traducidas al español.
 ================================================================================
