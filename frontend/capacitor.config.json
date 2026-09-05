@@ -1,6 +1,6 @@
 {
   "appId": "uk.albertogm.opengym",
-  "appName": "openGym",
+  "appName": "AresGYM",
   "webDir": "dist",
   "backgroundColor": "#0c0e12",
   "android": {
