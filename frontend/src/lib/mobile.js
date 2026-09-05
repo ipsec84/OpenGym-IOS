@@ -171,3 +171,32 @@ export async function writeAutoBackup(state) {
     })
   } catch (e) { /* best effort — the private mirror in Directory.Data still has the data */ }
 }
+
+const REST_TIMER_NOTIFICATION_ID = 9999
+
+export async function scheduleNativeRestNotification(sec) {
+  if (!MOBILE || sec <= 0) return
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    const perm = await LocalNotifications.checkPermissions()
+    if (perm.display !== 'granted') return
+    const at = new Date(Date.now() + sec * 1000)
+    await LocalNotifications.cancel({ notifications: [{ id: REST_TIMER_NOTIFICATION_ID }] }).catch(() => {})
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: REST_TIMER_NOTIFICATION_ID,
+        title: t('Rest over — next set!'),
+        body: t('Time to get back to work! Next set is waiting.'),
+        schedule: { at, allowWhileIdle: true },
+      }],
+    })
+  } catch (e) {}
+}
+
+export async function cancelNativeRestNotification() {
+  if (!MOBILE) return
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications')
+    await LocalNotifications.cancel({ notifications: [{ id: REST_TIMER_NOTIFICATION_ID }] }).catch(() => {})
+  } catch (e) {}
+}

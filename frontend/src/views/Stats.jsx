@@ -142,8 +142,45 @@ function MuscleBalance({ S }) {
 
   return <div className="card">
     <Segmented className="seg-range" value={view} onChange={setView}
-      options={[{ value: 'balance', label: t('Muscle balance') }, { value: 'fatigue', label: t('Fatigue') }, { value: 'strength', label: t('Strength') }]} />
-    {view === 'balance' ? <>
+      options={[{ value: 'balance', label: t('Muscle balance') }, { value: 'weekly', label: t('Weekly volume') }, { value: 'fatigue', label: t('Fatigue') }, { value: 'strength', label: t('Strength') }]} />
+    {view === 'weekly' ? (() => {
+      const weekWorkouts = muscleBalanceWindow(S.workouts, 7, now, todayISO(), weekStartOf(S))
+      const weekLoad = loadOfWorkouts(weekWorkouts, null)
+      const majorMuscles = ['chest', 'upper-back', 'deltoids', 'biceps', 'triceps', 'quadriceps', 'hamstring', 'gluteal', 'abs', 'calves']
+      return <>
+        <div className="row between" style={{ marginBottom: 8 }}>
+          <h2 style={{ margin: 0 }}>{t('Weekly muscle volume')} <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}>· {t('effective sets this week')}</span></h2>
+        </div>
+        <div style={{ marginTop: 6 }}>
+          {majorMuscles.map(slug => {
+            const sCount = Math.round((weekLoad[slug] || 0) * 10) / 10
+            const pct = Math.min(100, Math.round(sCount / 20 * 100))
+            const status = sCount === 0 ? t('Rest')
+              : sCount < 6 ? t('Maintenance')
+              : sCount < 10 ? t('Effective (MEV)')
+              : sCount <= 20 ? t('Optimal (MAV)')
+              : t('High (MRV)')
+            const col = sCount === 0 ? 'var(--sep)'
+              : sCount < 6 ? 'var(--label-3)'
+              : sCount < 10 ? 'var(--blue)'
+              : sCount <= 20 ? 'var(--acc)'
+              : 'var(--yellow)'
+            return <div key={slug} className="mrow" style={{ minHeight: 36 }}>
+              <span className="nm" style={{ width: 100 }}>{t(MUSCLE_NAME[slug])}</span>
+              <span className="bar" style={{ flex: 1 }}>
+                <i style={{ width: pct + '%', background: col }} />
+              </span>
+              <span className="v" style={{ textAlign: 'right', minWidth: 120 }}>
+                <b>{fmtNum(sCount)}</b> {t('sets')} <span className="small dim" style={{ color: col, fontWeight: 500 }}>({status})</span>
+              </span>
+            </div>
+          })}
+        </div>
+        <div className="small dim" style={{ marginTop: 12 }}>
+          {t('Volume landmarks: 6-10 sets/week (MEV), 10-20 sets/week (MAV optimal growth), >20 sets (MRV high fatigue).')}
+        </div>
+      </>
+    })() : view === 'balance' ? <>
       <div className="row between" style={{ marginBottom: 8 }}>
         <h2 style={{ margin: 0 }}>{t('Muscle balance')} <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}>· {on ? t('by hard sets') : t('by sets worked')}</span></h2>
         {rated && <Button size="sm" icon="flame" style={on ? { color: 'var(--yellow)' } : undefined}
@@ -286,6 +323,7 @@ export default function Stats() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const [range, setRange] = useState(90)
+  const [bwMetric, setBwMetric] = useState('weight')
   const [exId, setExId] = useState(null)
   const [exMetric, setExMetric] = useState('top')
   const now = Date.now()
@@ -294,6 +332,17 @@ export default function Stats() {
 
   const bwPts = S.bodyweight.filter(b => range === 0 || (b.t || new Date(b.d).getTime()) > now - range * 86400000)
     .map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.w, d: b.d }))
+  const fatPts = S.bodyweight.filter(b => b.fat != null && (range === 0 || (b.t || new Date(b.d).getTime()) > now - range * 86400000))
+    .map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.fat, d: b.d }))
+  const musclePts = S.bodyweight.filter(b => b.muscle != null && (range === 0 || (b.t || new Date(b.d).getTime()) > now - range * 86400000))
+    .map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.muscle, d: b.d }))
+  const hasFat = S.bodyweight.some(b => b.fat != null)
+  const hasMuscle = S.bodyweight.some(b => b.muscle != null)
+  const bwMetricOpts = [{ value: 'weight', label: t('Weight') }]
+  if (hasFat) bwMetricOpts.push({ value: 'fat', label: t('% Fat') })
+  if (hasMuscle) bwMetricOpts.push({ value: 'muscle', label: t('Muscle') })
+  const latestBW = S.bodyweight.length ? S.bodyweight[S.bodyweight.length - 1] : null
+
   const bw30 = S.bodyweight.filter(b => (b.t || new Date(b.d).getTime()) > now - 30 * 86400000)
   const bwDelta30 = bw30.length > 1 ? bw30[bw30.length - 1].w - bw30[0].w : null
   const workouts = S.workouts
@@ -457,9 +506,28 @@ export default function Stats() {
             <Button size="sm" icon="plus" onClick={() => bwSheet()}>{t('Log')}</Button>
           </div>
         </div>
+        {bwMetricOpts.length > 1 && <Segmented className="seg-range" value={bwMetric} onChange={setBwMetric} options={bwMetricOpts} />}
         <Segmented className="seg-range" value={range} onChange={setRange}
           options={[{ value: 30, label: '1M' }, { value: 90, label: '3M' }, { value: 365, label: '1Y' }, { value: 0, label: t('All') }]} />
-        <div className="chart"><LineChart points={bwPts} h={160} unit={S.unit} goal={S.targetW} /></div>
+        <div className="chart">
+          {bwMetric === 'fat'
+            ? <LineChart points={fatPts} h={160} unit="%" color="var(--yellow)" />
+            : bwMetric === 'muscle'
+              ? <LineChart points={musclePts} h={160} unit={S.unit} color="var(--blue)" />
+              : <LineChart points={bwPts} h={160} unit={S.unit} goal={S.targetW} />}
+        </div>
+        {latestBW && (latestBW.fat != null || latestBW.muscle != null || latestBW.visceral != null) && (
+          <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 10 }}>
+            <div className="small muted" style={{ marginBottom: 6 }}>{t('Latest biometrics')} ({fmtDate(latestBW.d, true)}):</div>
+            <div className="row" style={{ gap: 12, flexWrap: 'wrap', fontSize: 13 }}>
+              {latestBW.fat != null && <span><b>{fmtNum(latestBW.fat)}%</b> {t('fat')}</span>}
+              {latestBW.muscle != null && <span><b>{fmtNum(latestBW.muscle)} {S.unit}</b> {t('muscle')}</span>}
+              {latestBW.water != null && <span><b>{fmtNum(latestBW.water)}%</b> {t('water')}</span>}
+              {latestBW.visceral != null && <span><b>{latestBW.visceral}</b> {t('visceral')}</span>}
+              {latestBW.bmr != null && <span><b>{latestBW.bmr}</b> kcal {t('BMR')}</span>}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="card">

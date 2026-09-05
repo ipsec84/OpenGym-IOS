@@ -79,6 +79,13 @@ const COLUMNS = [
   ['time', ['time', 'duration']],
   ['setType', ['set type']],
   ['note', ['comment', 'comments', 'notes', 'note', 'workout notes']],
+  ['fat', ['fat', 'body fat', 'body fat %', 'body fat percentage', 'grasa corporal', 'grasa', '% grasa corporal']],
+  ['muscle', ['muscle mass', 'muscle', 'masa muscular', 'musculo', 'músculo']],
+  ['water', ['body water', 'water', 'agua', 'agua corporal', '% agua corporal']],
+  ['visceral', ['visceral fat', 'grasa visceral']],
+  ['bone', ['bone mass', 'bone', 'masa osea', 'masa ósea']],
+  ['bmr', ['bmr', 'tmb', 'metabolismo basal']],
+  ['bmi', ['bmi', 'imc', 'indice de masa corporal']],
 ]
 
 function mapHeader(header) {
@@ -511,7 +518,7 @@ export function parseWorkoutCSV(text, { unit = 'kg' } = {}) {
  */
 export function parseBodyweight(text, { unit = 'kg' } = {}) {
   const s = String(text)
-  const out = new Map()          // iso date -> { w, t }  (one weigh-in per day, the last)
+  const out = new Map()          // iso date -> { w, t, fat, muscle, water, visceral, bone, bmr, bmi, lean }
   let fileUnit = ''
 
   if (s.includes('HKQuantityTypeIdentifierBodyMass')) {
@@ -526,7 +533,41 @@ export function parseBodyweight(text, { unit = 'kg' } = {}) {
       const when = parseWhen(dt[1])
       if (!when) continue
       if (u) fileUnit = /lb/i.test(u[1]) ? 'lb' : 'kg'
-      out.set(when.d, { w: parseFloat(val[1]), t: new Date(dt[1]).getTime() || null })
+      const prev = out.get(when.d) || {}
+      out.set(when.d, { ...prev, w: parseFloat(val[1]), t: new Date(dt[1]).getTime() || null })
+    }
+
+    if (s.includes('HKQuantityTypeIdentifierBodyFatPercentage')) {
+      const reFat = /<Record[^>]*type="HKQuantityTypeIdentifierBodyFatPercentage"[^>]*>/g
+      let mf
+      while ((mf = reFat.exec(s))) {
+        const tag = mf[0]
+        const val = /value="([\d.]+)"/.exec(tag)
+        const dt = /startDate="([^"]+)"/.exec(tag) || /creationDate="([^"]+)"/.exec(tag)
+        if (!val || !dt) continue
+        const when = parseWhen(dt[1])
+        if (!when) continue
+        let fatVal = parseFloat(val[1])
+        if (fatVal > 0 && fatVal <= 1) fatVal = Math.round(fatVal * 1000) / 10
+        else fatVal = Math.round(fatVal * 10) / 10
+        const prev = out.get(when.d) || {}
+        out.set(when.d, { ...prev, fat: fatVal, t: prev.t || new Date(dt[1]).getTime() || null })
+      }
+    }
+
+    if (s.includes('HKQuantityTypeIdentifierLeanBodyMass')) {
+      const reLean = /<Record[^>]*type="HKQuantityTypeIdentifierLeanBodyMass"[^>]*>/g
+      let ml
+      while ((ml = reLean.exec(s))) {
+        const tag = ml[0]
+        const val = /value="([\d.]+)"/.exec(tag)
+        const dt = /startDate="([^"]+)"/.exec(tag) || /creationDate="([^"]+)"/.exec(tag)
+        if (!val || !dt) continue
+        const when = parseWhen(dt[1])
+        if (!when) continue
+        const prev = out.get(when.d) || {}
+        out.set(when.d, { ...prev, lean: Math.round(parseFloat(val[1]) * 10) / 10 })
+      }
     }
   } else {
     const rows = parseCSV(s)
@@ -542,7 +583,15 @@ export function parseBodyweight(text, { unit = 'kg' } = {}) {
       const when = parseWhen(String(rows[i][dCol] ?? ''))
       const w = num(rows[i][wCol])
       if (!when || !w) continue
-      out.set(when.d, { w, t: new Date(when.d).getTime() + (when.t ?? 0) })
+      const entry = { w, t: new Date(when.d).getTime() + (when.t ?? 0) }
+      if (map.fat !== undefined && rows[i][map.fat]) entry.fat = num(rows[i][map.fat])
+      if (map.muscle !== undefined && rows[i][map.muscle]) entry.muscle = num(rows[i][map.muscle])
+      if (map.water !== undefined && rows[i][map.water]) entry.water = num(rows[i][map.water])
+      if (map.visceral !== undefined && rows[i][map.visceral]) entry.visceral = num(rows[i][map.visceral])
+      if (map.bone !== undefined && rows[i][map.bone]) entry.bone = num(rows[i][map.bone])
+      if (map.bmr !== undefined && rows[i][map.bmr]) entry.bmr = num(rows[i][map.bmr])
+      if (map.bmi !== undefined && rows[i][map.bmi]) entry.bmi = num(rows[i][map.bmi])
+      out.set(when.d, entry)
     }
   }
 
@@ -553,8 +602,21 @@ export function parseBodyweight(text, { unit = 'kg' } = {}) {
     : x => Math.round(x * 10) / 10
   const dates = [...out.keys()].sort()
   return {
-    kind: 'bodyweight', source: 'Apple Health',
-    bodyweight: dates.map(d => ({ d, w: conv(out.get(d).w), t: out.get(d).t || new Date(d).getTime() })),
+    kind: 'bodyweight', source: s.includes('HKQuantityTypeIdentifierBodyMass') ? 'Apple Health' : 'FitProfile / Smart Scale',
+    bodyweight: dates.map(d => {
+      const row = out.get(d)
+      return {
+        d, w: conv(row.w), t: row.t || new Date(d).getTime(),
+        ...(row.fat != null ? { fat: row.fat } : {}),
+        ...(row.muscle != null ? { muscle: row.muscle } : {}),
+        ...(row.water != null ? { water: row.water } : {}),
+        ...(row.visceral != null ? { visceral: row.visceral } : {}),
+        ...(row.bone != null ? { bone: row.bone } : {}),
+        ...(row.bmr != null ? { bmr: row.bmr } : {}),
+        ...(row.bmi != null ? { bmi: row.bmi } : {}),
+        ...(row.lean != null ? { lean: row.lean } : {}),
+      }
+    }),
     fileUnit, converted, from: dates[0], to: dates[dates.length - 1],
   }
 }
@@ -574,10 +636,19 @@ export function parseImport(text, opts) {
 /** Merge into state. Existing days win — importing twice never duplicates a workout. */
 export function mergeImport(S, parsed) {
   if (parsed.kind === 'bodyweight') {
-    const have = new Set(S.bodyweight.map(b => b.d))
-    const fresh = parsed.bodyweight.filter(b => !have.has(b.d))
-    S.bodyweight = [...S.bodyweight, ...fresh].sort((a, b) => (a.d < b.d ? -1 : 1))
-    return { added: fresh.length, skipped: parsed.bodyweight.length - fresh.length }
+    const byDate = new Map((S.bodyweight || []).map(b => [b.d, { ...b }]))
+    let added = 0
+    parsed.bodyweight.forEach(fresh => {
+      if (byDate.has(fresh.d)) {
+        const cur = byDate.get(fresh.d)
+        byDate.set(fresh.d, { ...cur, ...fresh })
+      } else {
+        byDate.set(fresh.d, fresh)
+        added++
+      }
+    })
+    S.bodyweight = [...byDate.values()].sort((a, b) => (a.d < b.d ? -1 : 1))
+    return { added, skipped: parsed.bodyweight.length - added }
   }
   const have = new Set(S.workouts.map(w => w.d))
   const fresh = parsed.workouts.filter(w => !have.has(w.d))

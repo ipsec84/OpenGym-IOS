@@ -111,6 +111,36 @@ export default function AboutApp() {
           title="Catálogo de Ejercicios en Español"
           subtitle="1.324 ejercicios traducidos con la terminología correcta y estándar de gimnasio en español."
         />
+        <Row
+          icon="speaker"
+          iconTint="var(--yellow)"
+          title="Avisos Sonoros en Cascos / AirPods"
+          subtitle="Chimes audibles optimizados en auriculares Bluetooth/AirPods, desbloqueo de AudioContext y vibración háptica al finalizar descanso."
+        />
+        <Row
+          icon="arrowUp"
+          iconTint="var(--green)"
+          title="Sugerencia de Sobrecarga Progresiva (+2.5 kg)"
+          subtitle="Indicador inteligente para incrementar carga en 1 toque cuando completas tus repeticiones de la sesión anterior."
+        />
+        <Row
+          icon="trophy"
+          iconTint="var(--yellow)"
+          title="Cálculo 1RM en Tiempo Real & Récords (PR)"
+          subtitle="Estimación dinámica de 1RM por serie según peso y repeticiones, destacando automáticamente tus récords personales."
+        />
+        <Row
+          icon="bolt"
+          iconTint="var(--blue)"
+          title="Selector RIR / RPE Directo en Entrenamiento"
+          subtitle="Alternancia instantánea de esfuerzo en las series sin necesidad de salir a Ajustes."
+        />
+        <Row
+          icon="chart"
+          iconTint="var(--purple)"
+          title="Volumen Muscular Semanal & Bioimpedancia FitProfile"
+          subtitle="Marcadores MEV, MAV, MRV en Estadísticas, compatibilidad con báscula FitProfile y sincronización con Apple Health."
+        />
       </Section>
 
       {/* Repositorio y Créditos */}

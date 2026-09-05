@@ -141,13 +141,28 @@ function BwSheet({ required, onDone, close }) {
   const unit = st.unit
   const bw = lastBW(st)
   const [v, setV] = useState(bw ? bw.w : 70)
+  const [showBio, setShowBio] = useState(false)
+  const [fat, setFat] = useState(bw?.fat ?? '')
+  const [muscle, setMuscle] = useState(bw?.muscle ?? '')
+  const [water, setWater] = useState(bw?.water ?? '')
+  const [visceral, setVisceral] = useState(bw?.visceral ?? '')
+  const [bmr, setBmr] = useState(bw?.bmr ?? '')
+
   const save = () => {
     const n = Math.round((v || 0) * 10) / 10
     if (!n || n <= 0) { toast(t('Enter a valid weight')); return }
     update(s => {
       const iso = todayISO()
       const ex = s.bodyweight.find(b => b.d === iso)
-      if (ex) { ex.w = n; ex.t = Date.now() } else s.bodyweight.push({ d: iso, w: n, t: Date.now() })
+      const data = {
+        d: iso, w: n, t: Date.now(),
+        ...(fat !== '' && !isNaN(Number(fat)) ? { fat: Number(fat) } : {}),
+        ...(muscle !== '' && !isNaN(Number(muscle)) ? { muscle: Number(muscle) } : {}),
+        ...(water !== '' && !isNaN(Number(water)) ? { water: Number(water) } : {}),
+        ...(visceral !== '' && !isNaN(Number(visceral)) ? { visceral: Number(visceral) } : {}),
+        ...(bmr !== '' && !isNaN(Number(bmr)) ? { bmr: Number(bmr) } : {}),
+      }
+      if (ex) { Object.assign(ex, data) } else s.bodyweight.push(data)
       s.bodyweight.sort((a, b) => (a.d < b.d ? -1 : 1))
     })
     close()
@@ -170,6 +185,44 @@ function BwSheet({ required, onDone, close }) {
       : <h3>{t('Log body weight')}</h3>}
     <div className="muted small">{required ? t('Slide or tap to set your weight — tracked before every workout so your curve stays honest.') : t('Today') + ', ' + fmtDate(todayISO(), true)}</div>
     <WeightInput value={v} setValue={setV} unit={unit} />
+    {!required && <div style={{ marginTop: 10, marginBottom: 10 }}>
+      <button
+        type="button"
+        className="chip"
+        style={{ width: '100%', justifyContent: 'center', gap: 6, cursor: 'pointer', borderColor: showBio ? 'var(--acc)' : undefined }}
+        onClick={() => setShowBio(b => !b)}
+      >
+        <Icon name="heart" style={{ fontSize: 13, color: 'var(--acc)' }} />
+        {showBio ? t('Hide bioimpedance (FitProfile)') : t('+ Add bioimpedance data (FitProfile / % Fat)')}
+      </button>
+      {showBio && <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div className="field">
+          <label className="small muted">{t('% Body fat')}</label>
+          <input type="number" step="0.1" placeholder="e.g. 19.6" value={fat} onChange={e => setFat(e.target.value)}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--sep)', color: 'inherit', fontSize: 15 }} />
+        </div>
+        <div className="field">
+          <label className="small muted">{t('Muscle mass ({0})', unit)}</label>
+          <input type="number" step="0.1" placeholder="e.g. 77.5" value={muscle} onChange={e => setMuscle(e.target.value)}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--sep)', color: 'inherit', fontSize: 15 }} />
+        </div>
+        <div className="field">
+          <label className="small muted">{t('% Body water')}</label>
+          <input type="number" step="0.1" placeholder="e.g. 58.1" value={water} onChange={e => setWater(e.target.value)}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--sep)', color: 'inherit', fontSize: 15 }} />
+        </div>
+        <div className="field">
+          <label className="small muted">{t('Visceral fat')}</label>
+          <input type="number" step="1" placeholder="e.g. 14" value={visceral} onChange={e => setVisceral(e.target.value)}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--sep)', color: 'inherit', fontSize: 15 }} />
+        </div>
+        <div className="field" style={{ gridColumn: 'span 2' }}>
+          <label className="small muted">{t('BMR / Basal metabolic rate (kcal)')}</label>
+          <input type="number" step="1" placeholder="e.g. 2131" value={bmr} onChange={e => setBmr(e.target.value)}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--sep)', color: 'inherit', fontSize: 15 }} />
+        </div>
+      </div>}
+    </div>}
     <div style={{ height: 14 }} />
     <Button variant="primary" onClick={save}>{required ? t('Save & start workout') : t('Save')}</Button>
     {required && <>
@@ -180,7 +233,14 @@ function BwSheet({ required, onDone, close }) {
       <h4 className="sec">{t('Recent weigh-ins')}</h4>
       <div className="list" style={{ gap: 0 }}>
         {recent.map(b => <div key={b.d} className="row between" style={{ padding: '9px 2px', borderBottom: '1px solid var(--sep)' }}>
-          <span className="small muted">{fmtDate(b.d, true)}</span>
+          <div>
+            <span className="small muted">{fmtDate(b.d, true)}</span>
+            {(b.fat != null || b.muscle != null) && <div className="small dim" style={{ fontSize: 11 }}>
+              {b.fat != null && <span>{fmtNum(b.fat)}% {t('fat')}</span>}
+              {b.fat != null && b.muscle != null && <span> · </span>}
+              {b.muscle != null && <span>{fmtNum(b.muscle)} {unit} {t('muscle')}</span>}
+            </div>}
+          </div>
           <span className="row" style={{ gap: 12 }}><b>{fmtNum(b.w)} {unit}</b>
             <button className="iconbtn" style={{ width: 32, height: 30, borderRadius: 8, fontSize: 15, color: 'var(--red)' }} onClick={() => delEntry(b.d)} aria-label="delete"><Icon name="trash" /></button></span>
         </div>)}

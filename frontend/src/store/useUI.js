@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { uid } from '../lib/format.js'
-import { beep, vibrate } from '../lib/sound.js'
+import { beep, vibrate, playChime, playTick, unlockAudio } from '../lib/sound.js'
+import { scheduleNativeRestNotification, cancelNativeRestNotification } from '../lib/mobile.js'
 import { api } from '../lib/api.js'
 import { t } from '../lib/i18n.js'
 import { useStore } from './useStore.js'
@@ -86,10 +87,12 @@ export const useUI = create((set, get) => ({
     // Rest timer set to Off. Stopping and returning rather than starting a zero-length timer
     // keeps every caller honest: the four places that start a rest do not each need to know.
     if (!(sec > 0)) return
+    unlockAudio()
     const endsAt = Date.now() + sec * 1000
     set({ timer: { left: sec, total: sec, endsAt, forIdx } })
     requestRestNotificationPermission()
     pushRestTimer(sec)
+    scheduleNativeRestNotification(sec)
     timerTick = () => {
       const tm = get().timer
       if (!tm) return
@@ -97,10 +100,10 @@ export const useUI = create((set, get) => ({
       if (left === tm.left) return
       const snd = useStore.getState().S.sound
       if (left <= 0) {
-        beep(snd, 880, 0.15); beep(snd, 880, 0.15, 0.25); beep(snd, 1320, 0.4, 0.5)
+        playChime(snd)
         vibrate([200, 100, 200]); get().flashTimer(); maybeRestNotification(); get().toast(t('Rest over — next set!')); get().stopRest(); return
       }
-      if (left <= 3) beep(snd, 660, 0.1)
+      if (left <= 3) playTick(snd)
       set({ timer: { ...tm, left } })
     }
     timerInt = setInterval(timerTick, 1000)
@@ -115,6 +118,7 @@ export const useUI = create((set, get) => ({
     if (left <= 0) { get().stopRest(); return }
     set({ timer: { ...tm, left, total: tm.total + sec, endsAt: tm.endsAt + sec * 1000 } })
     pushRestTimer(left)
+    scheduleNativeRestNotification(left)
   },
   // The active list changed shape (an exercise removed or inserted at `at`): keep the rest
   // pointing at the same exercise. Returns nothing; the caller decides whether to stop instead.
@@ -127,6 +131,7 @@ export const useUI = create((set, get) => ({
     if (timerInt) clearInterval(timerInt); timerInt = null
     if (timerTick) document.removeEventListener('visibilitychange', timerTick); timerTick = null
     if (get().timer) cancelPushRestTimer()
+    cancelNativeRestNotification()
     set({ timer: null })
   },
 
@@ -141,6 +146,7 @@ export const useUI = create((set, get) => ({
   startWork(sec, label, onDone) {
     get().stopWork()
     get().stopRest()
+    unlockAudio()
     const total = Math.max(1, Math.round(sec) || 1)
     const endsAt = Date.now() + total * 1000
     workDone = onDone
@@ -152,14 +158,14 @@ export const useUI = create((set, get) => ({
       if (left === wk.left) return
       const snd = useStore.getState().S.sound
       if (left <= 0) {
-        beep(snd, 880, 0.15); beep(snd, 880, 0.15, 0.25); beep(snd, 1320, 0.4, 0.5)
+        playChime(snd)
         vibrate([200, 100, 200]); get().flashTimer()
         const done = workDone
         get().stopWork()
         if (done) done(wk.total)
         return
       }
-      if (left <= 3) beep(snd, 660, 0.1)
+      if (left <= 3) playTick(snd)
       set({ work: { ...wk, left } })
     }
     workInt = setInterval(workTick, 1000)

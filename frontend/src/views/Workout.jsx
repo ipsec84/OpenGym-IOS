@@ -16,6 +16,7 @@ import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField } from '../components/ui.jsx'
 import { nextPrescription, applyPrescription, defaultIncrement } from '../lib/progression.js'
 import { progressionGuidance } from '../lib/progression-copy.js'
+import { estimate1RM, best1RM } from '../lib/onerm.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { isWarmupRow, isDropSet, isRestPauseSet, dropsOf, clustersOf, addDrop, addCluster, removeDropAt, removeClusterAt, setDropAt, setClusterAt, nextDropWeight, nextBurstReps } from '../lib/workout-model.js'
 import { canMoveActiveWorkoutUnit, moveActiveWorkoutUnit } from '../lib/active-workout-order.js'
@@ -120,6 +121,12 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
   const cfg = { ...(entry.target || {}), id: entry.id }
   const bw = !cardio && isBw(cfg)
   const added = bw && entry.sets.some(s => s.w > 0)
+  const prevBest1RM = mode === 'reps' ? best1RM(S, entry.id) : null
+  const inc = defaultIncrement(entry.id, S.unit)
+  const lastAllHit = last && last.sets.length > 0 && last.sets.every(s => s.r >= (entry.target?.reps || cfg.reps || 8))
+  const curMaxW = Math.max(0, ...entry.sets.filter(s => !isWarmupRow(s)).map(s => s.w || 0))
+  const lastMaxW = Math.max(0, ...(last ? last.sets.map(s => s.w || 0) : [0]))
+  const canSuggestOverload = mode === 'reps' && !bw && lastAllHit && curMaxW <= lastMaxW
   const loadCol = { f: 'w', step: 2.5, dec: true, hd: bw ? t('Added ({0})', S.unit) : t('Weight ({0})', S.unit) }
   // The reps column is the total in every mode, unilateral included — the stepper walks in
   // twos there so the number you land on is one you can actually split evenly.
@@ -185,6 +192,8 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
       {(ex.tg || ex.bp) && <span className="tag">{t(ex.tg || ex.bp)}</span>}
       {ex.eq && <span className="tag">{t(ex.eq)}</span>}
       {best > 0 && <span className="tag nocap">{t('Best:')} {fmtNum(best)} {S.unit}</span>}
+      {prevBest1RM && <span className="tag nocap" title={t('All-time best estimated 1RM')}><Icon name="trophy" style={{ fontSize: 12, marginRight: 3, color: 'var(--yellow)' }} />{t('1RM:')} {fmtNum(prevBest1RM.est)} {S.unit}</span>}
+      {mode === 'reps' && <button type="button" className={'chip nocap' + (kind !== 'none' ? ' active' : '')} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 8px', fontSize: 12, borderColor: kind !== 'none' ? 'var(--acc)' : 'var(--sep)', color: kind !== 'none' ? 'var(--acc)' : 'var(--dim)', cursor: 'pointer' }} title={t('Toggle RIR / RPE effort column')} onClick={() => { const next = kind === 'none' ? 'rir' : kind === 'rir' ? 'rpe' : 'none'; update(s => { s.effort = next }) }}><Icon name="bolt" style={{ fontSize: 12 }} />{kind === 'none' ? t('Effort: Off') : kind.toUpperCase()}</button>}
     </div>
     {/* Three notes can apply to one exercise and they are not interchangeable, so each keeps its
         own line and its own icon: the plan's instruction (cfg.note, from the routine), the
@@ -198,6 +207,31 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
     </div>}
     {entry.note && <div className="exnote">{entry.note}</div>}
     {last && <div className="small dim" style={{ marginBottom: 4 }}>{t('Last time')} ({fmtDate(last.d)}): {last.sets.map(s => setLabel(entry.id, s, last.target)).join(', ')}</div>}
+    {canSuggestOverload && <div style={{ marginBottom: 6 }}>
+      <button
+        type="button"
+        className="chip nocap"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          background: 'rgba(var(--acc-rgb), 0.12)',
+          borderColor: 'var(--acc)',
+          color: 'var(--acc)',
+          fontWeight: 600,
+          cursor: 'pointer'
+        }}
+        onClick={() => {
+          mutEntry(entryIdx, e => {
+            e.sets = e.sets.map(s => isWarmupRow(s) ? s : { ...s, w: Math.round(((s.w || 0) + inc) * 10) / 10 })
+          })
+          useUI.getState().toast(t('Added +{0} {1} progressive overload!', inc, S.unit))
+        }}
+      >
+        <Icon name="arrowUp" style={{ fontSize: 12 }} />
+        {t('Overload: +{0} {1} (Hit last session)', inc, S.unit)}
+      </button>
+    </div>}
     {/* Bar + plates for barbell work: what to load per side for the set in front of you
         (first undone set; the heaviest row once everything is checked). The logged number
         stays the total — this chip is the split, and tapping it edits the bar's own weight
@@ -229,6 +263,8 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
         const isFirstWarmup = warm && !warmBefore
         // Numbering restarts per phase: with two warm-ups the first work set reads 1, not 3.
         const phaseNum = entry.sets.slice(0, i + 1).filter(x => isWarmupRow(x) === warm).length
+        const set1RM = (mode === 'reps' && !warm && s.w > 0 && s.r > 0) ? estimate1RM(s.w, s.r) : null
+        const isPr = set1RM && prevBest1RM && set1RM > prevBest1RM.est
         return <div key={i}>
           {isFirstWarmup && <div className="setph">{t('Warm-up')}</div>}
           {!warm && warmBefore && <div className="setsep" />}
@@ -245,6 +281,12 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
               disabled={entry.sets.length <= 1} onClick={() => onRemoveSetAt(i)}><Icon name="xmark" /></button>}
             <Check checked={s.done} onChange={() => onToggle(i)} />
           </div>
+          {set1RM && <div className="small dim" style={{ paddingLeft: 32, fontSize: 11, display: 'flex', alignItems: 'center', gap: 6, marginTop: -2, marginBottom: 4 }}>
+            <span>~{fmtNum(set1RM)} {S.unit} 1RM</span>
+            {isPr && <span style={{ color: 'var(--yellow)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+              <Icon name="trophy" style={{ fontSize: 11 }} />{t('PR!')} (+{fmtNum(set1RM - prevBest1RM.est)} {S.unit})
+            </span>}
+          </div>}
           {/* Drop-sets and rest-pause bursts extend this same row — no long rest, no new set.
               A planned exercise arrives with these already filled in (applyIntensifierPlan);
               every value here is just as editable as the main row's own weight/reps. */}
