@@ -7,6 +7,7 @@ import { fmtNum, fmtDate, fmtVol, todayISO, weekStartOf } from '../lib/format.js
 import { t, exerciseNameFor, getLang } from '../lib/i18n.js'
 import { bwSheet, goalSheet, calendarSheet, workoutDetailSheet, WorkoutRow, bwDeltaColor } from '../sheets.jsx'
 import LineChart from '../components/LineChart.jsx'
+import MultiLineChart from '../components/MultiLineChart.jsx'
 import Heatmap from '../components/Heatmap.jsx'
 import Icon from '../components/Icon.jsx'
 import BodyMap, { BodyMapLegend } from '../components/BodyMap.jsx'
@@ -323,7 +324,7 @@ export default function Stats() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const [range, setRange] = useState(90)
-  const [bwMetric, setBwMetric] = useState('weight')
+  const [bwMetric, setBwMetric] = useState(S.bodyweight?.some(b => b.fat != null || b.muscle != null) ? 'all' : 'weight')
   const [exId, setExId] = useState(null)
   const [exMetric, setExMetric] = useState('top')
   const now = Date.now()
@@ -336,12 +337,37 @@ export default function Stats() {
     .map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.fat, d: b.d }))
   const musclePts = S.bodyweight.filter(b => b.muscle != null && (range === 0 || (b.t || new Date(b.d).getTime()) > now - range * 86400000))
     .map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.muscle, d: b.d }))
+  const waterPts = S.bodyweight.filter(b => b.water != null && (range === 0 || (b.t || new Date(b.d).getTime()) > now - range * 86400000))
+    .map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.water, d: b.d }))
+  const visceralPts = S.bodyweight.filter(b => b.visceral != null && (range === 0 || (b.t || new Date(b.d).getTime()) > now - range * 86400000))
+    .map(b => ({ t: b.t || new Date(b.d).getTime(), y: b.visceral, d: b.d }))
   const hasFat = S.bodyweight.some(b => b.fat != null)
   const hasMuscle = S.bodyweight.some(b => b.muscle != null)
-  const bwMetricOpts = [{ value: 'weight', label: t('Weight') }]
+  const hasWater = S.bodyweight.some(b => b.water != null)
+  const hasVisceral = S.bodyweight.some(b => b.visceral != null)
+  const hasBio = hasFat || hasMuscle || hasWater || hasVisceral
+
+  const bwMetricOpts = []
+  if (hasBio) bwMetricOpts.push({ value: 'all', label: t('All lines') })
+  bwMetricOpts.push({ value: 'weight', label: t('Weight') })
   if (hasFat) bwMetricOpts.push({ value: 'fat', label: t('% Fat') })
   if (hasMuscle) bwMetricOpts.push({ value: 'muscle', label: t('Muscle') })
-  const latestBW = S.bodyweight.length ? S.bodyweight[S.bodyweight.length - 1] : null
+  if (hasWater) bwMetricOpts.push({ value: 'water', label: t('% Water') })
+  if (hasVisceral) bwMetricOpts.push({ value: 'visceral', label: t('Visceral') })
+
+  const biometricSeries = useMemo(() => [
+    { id: 'weight', name: t('Weight'), color: 'var(--acc)', unit: S.unit, points: bwPts },
+    hasMuscle ? { id: 'muscle', name: t('Muscle'), color: '#3b82f6', unit: S.unit, points: musclePts } : null,
+    hasWater ? { id: 'water', name: t('% Water'), color: '#06b6d4', unit: '%', points: waterPts } : null,
+    hasFat ? { id: 'fat', name: t('% Fat'), color: '#eab308', unit: '%', points: fatPts } : null,
+    hasVisceral ? { id: 'visceral', name: t('Visceral'), color: '#f97316', unit: 'pts', points: visceralPts } : null,
+  ].filter(Boolean), [bwPts, musclePts, waterPts, fatPts, visceralPts, hasMuscle, hasWater, hasFat, hasVisceral, S.unit])
+
+  const sortedBW = useMemo(() => {
+    return [...S.bodyweight].sort((a, b) => (a.t || new Date(a.d).getTime()) - (b.t || new Date(b.d).getTime()))
+  }, [S.bodyweight])
+  const latestBW = sortedBW.length ? sortedBW[sortedBW.length - 1] : null
+  const prevBW = sortedBW.length > 1 ? sortedBW[sortedBW.length - 2] : null
 
   const bw30 = S.bodyweight.filter(b => (b.t || new Date(b.d).getTime()) > now - 30 * 86400000)
   const bwDelta30 = bw30.length > 1 ? bw30[bw30.length - 1].w - bw30[0].w : null
@@ -510,24 +536,101 @@ export default function Stats() {
         <Segmented className="seg-range" value={range} onChange={setRange}
           options={[{ value: 30, label: '1M' }, { value: 90, label: '3M' }, { value: 365, label: '1Y' }, { value: 0, label: t('All') }]} />
         <div className="chart">
-          {bwMetric === 'fat'
-            ? <LineChart points={fatPts} h={160} unit="%" color="var(--yellow)" />
-            : bwMetric === 'muscle'
-              ? <LineChart points={musclePts} h={160} unit={S.unit} color="var(--blue)" />
-              : <LineChart points={bwPts} h={160} unit={S.unit} goal={S.targetW} />}
+          {bwMetric === 'all' ? (
+            <MultiLineChart series={biometricSeries} h={180} />
+          ) : bwMetric === 'fat' ? (
+            <LineChart points={fatPts} h={160} unit="%" color="#eab308" />
+          ) : bwMetric === 'muscle' ? (
+            <LineChart points={musclePts} h={160} unit={S.unit} color="#3b82f6" />
+          ) : bwMetric === 'water' ? (
+            <LineChart points={waterPts} h={160} unit="%" color="#06b6d4" />
+          ) : bwMetric === 'visceral' ? (
+            <LineChart points={visceralPts} h={160} unit="pts" color="#f97316" />
+          ) : (
+            <LineChart points={bwPts} h={160} unit={S.unit} goal={S.targetW} />
+          )}
         </div>
-        {latestBW && (latestBW.fat != null || latestBW.muscle != null || latestBW.visceral != null) && (
-          <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 10 }}>
-            <div className="small muted" style={{ marginBottom: 6 }}>{t('Latest biometrics')} ({fmtDate(latestBW.d, true)}):</div>
-            <div className="row" style={{ gap: 12, flexWrap: 'wrap', fontSize: 13 }}>
-              {latestBW.fat != null && <span><b>{fmtNum(latestBW.fat)}%</b> {t('fat')}</span>}
-              {latestBW.muscle != null && <span><b>{fmtNum(latestBW.muscle)} {S.unit}</b> {t('muscle')}</span>}
-              {latestBW.water != null && <span><b>{fmtNum(latestBW.water)}%</b> {t('water')}</span>}
-              {latestBW.visceral != null && <span><b>{latestBW.visceral}</b> {t('visceral')}</span>}
-              {latestBW.bmr != null && <span><b>{latestBW.bmr}</b> kcal {t('BMR')}</span>}
+        {latestBW && (latestBW.fat != null || latestBW.muscle != null || latestBW.visceral != null) && (() => {
+          const dW = prevBW && latestBW.w != null && prevBW.w != null ? latestBW.w - prevBW.w : null
+          const dFat = prevBW && latestBW.fat != null && prevBW.fat != null ? latestBW.fat - prevBW.fat : null
+          const dMuscle = prevBW && latestBW.muscle != null && prevBW.muscle != null ? latestBW.muscle - prevBW.muscle : null
+          const dWater = prevBW && latestBW.water != null && prevBW.water != null ? latestBW.water - prevBW.water : null
+          const dVisc = prevBW && latestBW.visceral != null && prevBW.visceral != null ? latestBW.visceral - prevBW.visceral : null
+          const dBmr = prevBW && latestBW.bmr != null && prevBW.bmr != null ? latestBW.bmr - prevBW.bmr : null
+
+          const fmtD = (v, unit = '') => {
+            if (v == null) return null
+            if (Math.abs(v) < 0.05) return '='
+            return (v > 0 ? '+' : '') + fmtNum(v) + (unit ? ' ' + unit : '')
+          }
+
+          return (
+            <div style={{ marginTop: 14, padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 12, border: '1px solid var(--sep)' }}>
+              <div className="row between" style={{ marginBottom: 10, alignItems: 'center' }}>
+                <span className="small muted" style={{ fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                  {t('Latest biometrics')}
+                </span>
+                <span className="small dim">{fmtDate(latestBW.d, true)}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(95px, 1fr))', gap: '8px 10px' }}>
+                {latestBW.w != null && (
+                  <div>
+                    <div className="small dim">{t('Weight')}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                      {fmtNum(latestBW.w)} <span className="small dim">{S.unit}</span>
+                      {dW != null && <span className="small" style={{ marginLeft: 5, color: dW < 0 ? 'var(--acc)' : 'var(--yellow)' }}>{fmtD(dW)}</span>}
+                    </div>
+                  </div>
+                )}
+                {latestBW.fat != null && (
+                  <div>
+                    <div className="small dim">{t('fat')}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#eab308' }}>
+                      {fmtNum(latestBW.fat)}%
+                      {dFat != null && <span className="small" style={{ marginLeft: 5, color: dFat <= 0 ? 'var(--acc)' : 'var(--yellow)' }}>{fmtD(dFat, '%')}</span>}
+                    </div>
+                  </div>
+                )}
+                {latestBW.muscle != null && (
+                  <div>
+                    <div className="small dim">{t('muscle')}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#3b82f6' }}>
+                      {fmtNum(latestBW.muscle)} <span className="small dim">{S.unit}</span>
+                      {dMuscle != null && <span className="small" style={{ marginLeft: 5, color: dMuscle >= 0 ? 'var(--acc)' : 'var(--yellow)' }}>{fmtD(dMuscle)}</span>}
+                    </div>
+                  </div>
+                )}
+                {latestBW.water != null && (
+                  <div>
+                    <div className="small dim">{t('water')}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#06b6d4' }}>
+                      {fmtNum(latestBW.water)}%
+                      {dWater != null && <span className="small" style={{ marginLeft: 5, color: dWater >= 0 ? 'var(--acc)' : 'var(--yellow)' }}>{fmtD(dWater, '%')}</span>}
+                    </div>
+                  </div>
+                )}
+                {latestBW.visceral != null && (
+                  <div>
+                    <div className="small dim">{t('visceral')}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#f97316' }}>
+                      {latestBW.visceral}
+                      {dVisc != null && <span className="small" style={{ marginLeft: 5, color: dVisc <= 0 ? 'var(--acc)' : 'var(--yellow)' }}>{fmtD(dVisc)}</span>}
+                    </div>
+                  </div>
+                )}
+                {latestBW.bmr != null && (
+                  <div>
+                    <div className="small dim">{t('BMR')}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                      {latestBW.bmr} <span className="small dim">kcal</span>
+                      {dBmr != null && <span className="small" style={{ marginLeft: 5, color: 'var(--label-3)' }}>{fmtD(dBmr)}</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
       </div>
 
       <div className="card">
