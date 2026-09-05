@@ -1,0 +1,36 @@
+================================================================================
+                    OPENGM IOS - REGISTRO DE VERSIONES
+================================================================================
+ID de la Aplicación:  uk.albertogm.opengym
+Nombre en pantalla:   openGym / Ares Gym
+Servidor Backend:     https://gym.albertogm.uk (Synology NAS)
+Herramientas firma:   Sideloadly, AltStore, Scarlet, TrollStore
+
+--------------------------------------------------------------------------------
+ARCHIVOS DISPONIBLES EN ESTA CARPETA:
+--------------------------------------------------------------------------------
+1. openGym_v1.ipa (17.22 MB)
+   - Versión base inicial iOS empaquetada con Capacitor.
+   - Soporte para servidor privado Synology NAS y trabajo offline.
+   - Registro de entrenamientos, temporizadores, biblioteca de ejercicios.
+
+2. openGym_v2.ipa (17.22 MB)
+   - Actualización de identidad visual oficial "Ares Gym".
+   - Nuevo icono de aplicación dorado con casco espartano sobre fondo texturizado.
+   - Nueva pantalla de inicio / Launch Screen integrada para iOS y iPadOS.
+   - Favicons PWA actualizados.
+
+3. openGym_v3.ipa (17.22 MB) [RECOMENDADA]
+   - Versión actual con todas las mejoras de rendimiento y entrenamiento.
+   - Avisos sonoros (chimes de 880Hz) directos a cascos/AirPods al terminar descanso.
+   - Selector rápido de RIR / RPE en la cabecera de la serie.
+   - Botón de sobrecarga progresiva (+2.5 kg) en un toque.
+   - Cálculo de 1RM estimado dinámico en vivo con medallas doradas "🏆 PR!".
+   - Gráfica de volumen muscular semanal con marcadores hipertróficos (MEV, MAV, MRV).
+   - Integración completa de bioimpedancia FitProfile / Apple Health.
+   - Gráficas multilínea simultáneas (Peso, Músculo, % Agua, % Grasa, Visceral).
+   - Panel de deltas biométricos automáticos comparativos vs pesaje anterior.
+
+4. openGym_latest.ipa (17.22 MB)
+   - Copia directa de la versión más reciente (openGym_v3) para instalación directa.
+================================================================================
