@@ -178,6 +178,7 @@ export default function Home() {
             <Icon name="target" style={{ fontSize: 13 }} />
             <span>{t('Goal')} {fmtNum(S.targetW)} {S.unit} · {Math.abs(S.targetW - bw.w) < 0.05 ? t('reached!') : t(S.targetW > bw.w ? '{0} to gain' : '{0} to lose', fmtNum(Math.abs(S.targetW - bw.w)) + ' ' + S.unit)}</span>
           </div>
+        )}
         {hasBio && (
           <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 8, fontSize: 11 }}>
             {bw.fat != null && <span style={{ padding: '2px 8px', borderRadius: 999, background: 'var(--surface-2)', border: '1px solid #eab308', color: '#eab308' }}><b>{fmtNum(bw.fat)}%</b> {t('fat')}</span>}
