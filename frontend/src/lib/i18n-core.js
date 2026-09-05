@@ -10,7 +10,7 @@ export const LANGS = {
   ko: '한국어', hi: 'हिन्दी', th: 'ไทย', hu: 'Magyar'
 }
 export const INSTR_LANGS = ['en', 'es', 'fr', 'it', 'tr', 'ru', 'zh', 'hi', 'pl', 'ko', 'pt-BR', 'hu']
-export const EXERCISE_NAME_LANGS = ['pt-BR', 'hu']
+export const EXERCISE_NAME_LANGS = ['pt-BR', 'hu', 'es']
 export const DATE_LOCALES = {
   en: 'en-GB', de: 'de-DE', es: 'es-ES', fr: 'fr-FR', it: 'it-IT', pt: 'pt-PT', 'pt-BR': 'pt-BR',
   pl: 'pl-PL', tr: 'tr-TR', ru: 'ru-RU', zh: 'zh-CN', ko: 'ko-KR', hi: 'hi-IN', th: 'th-TH', hu: 'hu-HU'

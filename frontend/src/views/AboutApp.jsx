@@ -99,6 +99,18 @@ export default function AboutApp() {
           title="Túnel Seguro Cloudflare Zero Trust"
           subtitle="Acceso HTTPS seguro sin apertura de puertos en el router y preservación de cabecera CF-Connecting-IP."
         />
+        <Row
+          icon="calendar"
+          iconTint="var(--purple)"
+          title="Rutinas para Principiantes (3, 4 y 5 Días)"
+          subtitle="Planes completos estructurados para principiantes: Full Body (3 días), Torso/Pierna (4 días) e Híbrida PPL (5 días)."
+        />
+        <Row
+          icon="dumbbell"
+          iconTint="var(--acc)"
+          title="Catálogo de Ejercicios en Español"
+          subtitle="1.324 ejercicios traducidos con la terminología correcta y estándar de gimnasio en español."
+        />
       </Section>
 
       {/* Repositorio y Créditos */}

@@ -9,7 +9,7 @@ import { usesBar, barWeightFor, defaultBarWeight, hasBarOverride } from './lib/b
 import { beep, vibrate } from './lib/sound.js'
 import { t, instrFor, exerciseNameFor, getLang, INSTR_LANGS } from './lib/i18n.js'
 import { nav } from './lib/nav.js'
-import { starterRoutines } from './lib/starter.js'
+import { starterRoutines, STARTER_PLANS } from './lib/starter.js'
 import Media, { Thumb } from './components/Media.jsx'
 import Stepper from './components/Stepper.jsx'
 import Icon from './components/Icon.jsx'
@@ -54,13 +54,54 @@ export function confirmSheet(opts) {
 }
 
 /* ============================ starter plan ============================ */
-export function loadStarterPlan() {
-  const [push, pull, legs] = starterRoutines()
+export function applyStarterPlan(planKey, close) {
+  const plan = STARTER_PLANS[planKey]
+  if (!plan) return
+  const routines = plan.create()
   update(st => {
-    st.routines.push(push, pull, legs)
-    st.week[1] = push.id; st.week[3] = pull.id; st.week[5] = legs.id
+    st.routines.push(...routines)
+    plan.weekDays.forEach((dayIdx, i) => {
+      st.week[dayIdx] = routines[i].id
+    })
   })
-  toast(t('Starter plan loaded — Mon Push · Wed Pull · Fri Legs'))
+  toast(t(`${plan.title} cargado con éxito`))
+  close?.()
+}
+
+export function starterPlanSheet() {
+  ui().openSheet(close => (
+    <div className="pad-sheet" style={{ padding: '20px 16px' }}>
+      <h3 style={{ margin: '0 0 8px', fontSize: '1.2rem' }}>{t('Rutinas para Principiantes')}</h3>
+      <p className="dim small" style={{ marginBottom: 18, lineHeight: 1.4 }}>
+        {t('Selecciona la rutina que mejor se adapte a tus días de entrenamiento semanal. Los ejercicios y nombres están configurados en español.')}
+      </p>
+
+      {Object.entries(STARTER_PLANS).map(([key, plan]) => (
+        <div
+          key={key}
+          className="card"
+          style={{
+            marginBottom: 12,
+            cursor: 'pointer',
+            padding: '14px 16px',
+            borderColor: 'var(--sep)',
+            background: 'var(--bg-card)'
+          }}
+          onClick={() => applyStarterPlan(key, close)}
+        >
+          <div className="row between" style={{ marginBottom: 6 }}>
+            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--label)' }}>{plan.title}</div>
+            <span className="adm-pill acc" style={{ fontSize: '.75rem' }}>{plan.days}</span>
+          </div>
+          <div className="dim small" style={{ lineHeight: 1.4 }}>{plan.desc}</div>
+        </div>
+      ))}
+    </div>
+  ))
+}
+
+export function loadStarterPlan() {
+  starterPlanSheet()
 }
 
 /* ============================ weight picker (shared: body weight + goal) ============================ */
